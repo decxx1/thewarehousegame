@@ -231,6 +231,18 @@ body::after {
   transform: translateY(-2px);
 }
 
+.btn-debug {
+  background: transparent;
+  color: #00cc66;
+  border-color: #00cc66;
+  font-size: 20px;
+}
+.btn-debug:hover {
+  background: rgba(0, 204, 102, 0.12);
+  box-shadow: 0 0 16px rgba(0, 204, 102, 0.3);
+  transform: translateY(-2px);
+}
+
 .btn:active { transform: translateY(0) !important; }
 
 .btn-sm {

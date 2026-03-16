@@ -1,4 +1,7 @@
 /dist
 /node_modules
 /vendor
+.agents
+.claude
+skills-lock.json
 .env

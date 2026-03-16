@@ -2,10 +2,12 @@ import { useState } from 'preact/hooks';
 import StageSelect from './StageSelect.jsx';
 import RoomSelect from './RoomSelect.jsx';
 
+const IS_DEBUG = import.meta.env.VITE_DEBUG === 'true';
+
 export default function MainMenu({
   completed, unlockedStages,
   currentStage, currentRoom,
-  onPlay, onStartRoom, onOpenPasswordModal,
+  onPlay, onStartRoom, onOpenPasswordModal, onDebug,
 }) {
   const [view, setView] = useState('main');
   const [selectedStage, setSelectedStage] = useState(null);
@@ -55,6 +57,7 @@ export default function MainMenu({
         <div class="menu-buttons">
           <button class="btn btn-primary" onClick={onPlay}>▶ PLAY</button>
           <button class="btn btn-secondary" onClick={() => setView('stages')}>SELECT STAGE</button>
+          {IS_DEBUG && <button class="btn btn-debug" onClick={onDebug}>⚙ DEBUG MAP</button>}
         </div>
         <p class="controls-hint">WASD / Arrows &nbsp;·&nbsp; Z=Undo &nbsp;·&nbsp; R=Restart &nbsp;·&nbsp; ESC=Menu</p>
       </div>

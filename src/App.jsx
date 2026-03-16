@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'preact/hooks';
 import { STAGES } from './game/levels.js';
 import GameCanvas from './components/GameCanvas.jsx';
+import DebugCanvas from './components/DebugCanvas.jsx';
 import HUD from './components/HUD.jsx';
 import MainMenu from './components/MainMenu.jsx';
 import PasswordModal from './components/PasswordModal.jsx';
@@ -110,7 +111,14 @@ export default function App() {
         />
       )}
 
-      <HUD visible={screen === 'game'} {...hud} />
+      {screen === 'debug' && (
+        <DebugCanvas
+          onHudUpdate={setHud}
+          onEscape={() => setScreen('menu')}
+        />
+      )}
+
+      <HUD visible={screen === 'game' || screen === 'debug'} {...hud} />
 
       {screen === 'menu' && (
         <MainMenu
@@ -121,6 +129,7 @@ export default function App() {
           onPlay={() => startGame(currentStage, currentRoom)}
           onStartRoom={startGame}
           onOpenPasswordModal={setPasswordModal}
+          onDebug={() => setScreen('debug')}
         />
       )}
 
