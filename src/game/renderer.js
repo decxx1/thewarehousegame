@@ -106,7 +106,7 @@ export class Renderer {
         tw.elapsed += dt;
         if (tw.elapsed >= tw.duration) {
           tw.active = false;
-          if (tw.onDone) { tw.onDone(); tw.onDone = null; }
+          if (tw.onDone) { const done = tw.onDone; tw.onDone = null; done(); }
         }
         this.dirty = true;
       }

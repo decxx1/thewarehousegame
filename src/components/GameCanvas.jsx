@@ -48,38 +48,57 @@ export default function GameCanvas({ stage, room, onHudUpdate, onRoomComplete, o
 
     let tweening = false;
     let winPending = false;
+    // One-slot input buffer: stores the last direction requested during a tween.
+    // Only GameCanvas manages this — input.js only tracks keys.
+    let bufferedDir = null;
 
-    const executeMove = (dx, dy) => {
-      if (tweening || winPending) return;
+    const onTweenDone = () => {
+      tweening = false;
+      if (engine.checkWin()) {
+        winPending = true;
+        bufferedDir = null;
+        cbRefs.current.onRoomComplete(stage, room);
+        return;
+      }
+      const a = renderer.anim;
+      const nx = engine.state.player.x + a.dir.dx;
+      const ny = engine.state.player.y + a.dir.dy;
+      renderer.notifyIdle(engine.state.boxes.some(b => b.x === nx && b.y === ny));
+      // Flush buffer: try the pending direction now that we're free
+      if (bufferedDir) {
+        const [bdx, bdy] = bufferedDir;
+        bufferedDir = null;
+        startMove(bdx, bdy);
+      }
+    };
+
+    const startMove = (dx, dy) => {
+      // Must never be called while tweening — caller is responsible
       const prev = {
         player: { x: engine.state.player.x, y: engine.state.player.y },
         boxes: engine.state.boxes.map(b => ({ x: b.x, y: b.y })),
       };
       const moved = engine.tryMove(dx, dy);
-      if (!moved) return;
+      if (!moved) return; // wall or blocked — just drop it, buffer stays as-is
       updateHud();
       tweening = true;
-      renderer.startMoveTween(dx, dy, moved === 'push', prev, engine.state, () => {
-        tweening = false;
-        if (engine.checkWin()) {
-          winPending = true;
-          cbRefs.current.onRoomComplete(stage, room);
-          return;
-        }
-        const a = renderer.anim;
-        const nx = engine.state.player.x + a.dir.dx;
-        const ny = engine.state.player.y + a.dir.dy;
-        renderer.notifyIdle(engine.state.boxes.some(b => b.x === nx && b.y === ny));
-      });
+      renderer.startMoveTween(dx, dy, moved === 'push', prev, engine.state, onTweenDone);
     };
 
     input.on('move', (dx, dy) => {
       if (winPending) return;
-      executeMove(dx, dy);
+      if (tweening) {
+        // Store the most recent intent — overwrite any older buffer
+        bufferedDir = [dx, dy];
+      } else {
+        bufferedDir = null;
+        startMove(dx, dy);
+      }
     });
 
     input.on('undo', () => {
       if (tweening || winPending) return;
+      bufferedDir = null;
       if (engine.undo()) { renderer.snapToState(engine.state); updateHud(); }
     });
 
@@ -87,6 +106,7 @@ export default function GameCanvas({ stage, room, onHudUpdate, onRoomComplete, o
       if (winPending) return;
       tweening = false;
       winPending = false;
+      bufferedDir = null;
       const newState = engine.loadLevel(levelStr);
       renderer.resizeForLevel(newState.w, newState.h);
       renderer.snapToState(newState);
@@ -105,8 +125,11 @@ export default function GameCanvas({ stage, room, onHudUpdate, onRoomComplete, o
     window.addEventListener('resize', handleResize);
 
     let rafId;
-    const gameLoop = () => {
-      if (!tweening && !winPending) input.pollHeld();
+    const gameLoop = (now) => {
+      if (!tweening && !winPending) {
+        const dir = input.pollHeld(now);
+        if (dir) startMove(dir[0], dir[1]);
+      }
       renderer.render(engine.state);
       rafId = requestAnimationFrame(gameLoop);
     };

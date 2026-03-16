@@ -36,9 +36,22 @@ export default function DebugCanvas({ onHudUpdate, onEscape }) {
     updateHud();
 
     let tweening = false;
+    let bufferedDir = null;
 
-    const executeMove = (dx, dy) => {
-      if (tweening) return;
+    const onTweenDone = () => {
+      tweening = false;
+      const a = renderer.anim;
+      const nx = engine.state.player.x + a.dir.dx;
+      const ny = engine.state.player.y + a.dir.dy;
+      renderer.notifyIdle(engine.state.boxes.some(b => b.x === nx && b.y === ny));
+      if (bufferedDir) {
+        const [bdx, bdy] = bufferedDir;
+        bufferedDir = null;
+        startMove(bdx, bdy);
+      }
+    };
+
+    const startMove = (dx, dy) => {
       const prev = {
         player: { x: engine.state.player.x, y: engine.state.player.y },
         boxes: engine.state.boxes.map(b => ({ x: b.x, y: b.y })),
@@ -47,24 +60,23 @@ export default function DebugCanvas({ onHudUpdate, onEscape }) {
       if (!moved) return;
       updateHud();
       tweening = true;
-      renderer.startMoveTween(dx, dy, moved === 'push', prev, engine.state, () => {
-        tweening = false;
-        const a = renderer.anim;
-        const nx = engine.state.player.x + a.dir.dx;
-        const ny = engine.state.player.y + a.dir.dy;
-        renderer.notifyIdle(engine.state.boxes.some(b => b.x === nx && b.y === ny));
-      });
+      renderer.startMoveTween(dx, dy, moved === 'push', prev, engine.state, onTweenDone);
     };
 
-    input.on('move', (dx, dy) => executeMove(dx, dy));
+    input.on('move', (dx, dy) => {
+      if (tweening) { bufferedDir = [dx, dy]; }
+      else { bufferedDir = null; startMove(dx, dy); }
+    });
 
     input.on('undo', () => {
       if (tweening) return;
+      bufferedDir = null;
       if (engine.undo()) { renderer.snapToState(engine.state); updateHud(); }
     });
 
     input.on('restart', () => {
       tweening = false;
+      bufferedDir = null;
       const newState = engine.loadLevel(DEBUG_LEVEL);
       renderer.resizeForLevel(newState.w, newState.h);
       renderer.snapToState(newState);
@@ -83,8 +95,11 @@ export default function DebugCanvas({ onHudUpdate, onEscape }) {
     window.addEventListener('resize', handleResize);
 
     let rafId;
-    const gameLoop = () => {
-      if (!tweening) input.pollHeld();
+    const gameLoop = (now) => {
+      if (!tweening) {
+        const dir = input.pollHeld(now);
+        if (dir) startMove(dir[0], dir[1]);
+      }
       renderer.render(engine.state);
       rafId = requestAnimationFrame(gameLoop);
     };
