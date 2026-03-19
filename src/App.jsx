@@ -28,6 +28,17 @@ function loadProgress() {
   } catch { return { completed: new Set(), unlocked: new Set([0]) }; }
 }
 
+function findNextUncompleted(completed) {
+  for (let s = 0; s < STAGES.length; s++) {
+    for (let r = 0; r < STAGES[s].levels.length; r++) {
+      if (!completed.has(globalIndex(s, r))) {
+        return { stage: s, room: r };
+      }
+    }
+  }
+  return { stage: 0, room: 0 };
+}
+
 function saveProgress(completed, unlocked) {
   try {
     localStorage.setItem(STORAGE_DONE, JSON.stringify([...completed]));
@@ -126,7 +137,10 @@ export default function App() {
           unlockedStages={unlockedStages}
           currentStage={currentStage}
           currentRoom={currentRoom}
-          onPlay={() => startGame(currentStage, currentRoom)}
+          onPlay={() => {
+            const next = findNextUncompleted(completedRef.current);
+            startGame(next.stage, next.room);
+          }}
           onStartRoom={startGame}
           onOpenPasswordModal={setPasswordModal}
           onDebug={() => setScreen('debug')}
