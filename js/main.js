@@ -247,7 +247,8 @@ class Game {
 
   _setupMenuEvents() {
     document.getElementById('btnPlay').addEventListener('click', () => {
-      this.loadRoom(this.currentStage, this.currentRoom);
+      const next = this._findNextUncompleted();
+      this.loadRoom(next.stage, next.room);
       this.hideMenu();
     });
 
@@ -308,6 +309,18 @@ class Game {
 
       container.appendChild(btn);
     }
+  }
+
+  /** Find the next uncompleted level (stage + room). Falls back to 0,0 if all done. */
+  _findNextUncompleted() {
+    for (let s = 0; s < STAGES.length; s++) {
+      for (let r = 0; r < STAGES[s].levels.length; r++) {
+        if (!this.completed.has(this._globalIndex(s, r))) {
+          return { stage: s, room: r };
+        }
+      }
+    }
+    return { stage: 0, room: 0 };
   }
 
   _isStageComplete(stageIdx) {
